@@ -12,7 +12,9 @@ import pandas as pd
 
 from fairsearchdeltr import trainer
 
-class Deltr():
+
+class Deltr(object):
+
     def __init__(self, protected_feature: int, gamma: float, number_of_iterations=3000, learning_rate=0.001,
                  lambdaa=0.001, init_var=0.01):
         """

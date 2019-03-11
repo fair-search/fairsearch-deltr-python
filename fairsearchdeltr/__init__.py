@@ -14,6 +14,7 @@ is at https://github.com/fair-search/fairsearchdeltr-python.
 :copyright: (c) 2019 by Ivan Kitanovski
 :license: Apache 2.0, see LICENSE for more details.
 """
+from .deltr import Deltr
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
