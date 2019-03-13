@@ -172,6 +172,7 @@ class SyntheticDatasetCreator(object):
         # add protected columns to dataset
         self.__dataset = self.__dataset.append(newData)
 
+
 if __name__ == '__main__':
     sdc = SyntheticDatasetCreator(20, {'gender': 2}, ['age', 'education', 'ethnicity'])
 

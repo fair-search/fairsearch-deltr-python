@@ -59,8 +59,9 @@ class Deltr(object):
     def train(self, training_set: pd.DataFrame):
         """
         Trains a DELTR model on a given training set
-        :param training_set:        requires first column to contain the query ids and last column to contain the
-                                    training judgments (in descending order, i.e. higher scores are better
+        :param training_set:        requires first column to contain the query ids, second column the document ids
+                                    and last column to contain the training judgments in descending order
+                                    i.e. higher scores are better
         :return:                    returns the model
         """
 
@@ -69,10 +70,7 @@ class Deltr(object):
                              self._lambda, self._init_var)
 
         # prepare data
-        query_ids = np.asarray(training_set.iloc[:, 0])
-        feature_matrix = np.asarray(training_set.iloc[:, 1:(training_set.shape[1] - 1)])
-        training_scores = np.reshape(np.asarray(training_set.iloc[:, training_set.shape[1] - 1]),
-                                     (feature_matrix.shape[0], 1))
+        query_ids, doc_ids, feature_matrix, training_scores = prepare_data(training_set)
 
         # launch training routine
         self._omega = tr.train_nn(query_ids, feature_matrix, training_scores)
@@ -80,8 +78,46 @@ class Deltr(object):
         # return model
         return self._omega
 
-    def rank(self, prediction_set):
-        raise NotImplementedError()
+    def rank(self, prediction_set: pd.DataFrame):
+        """
+        Uses the trained DELTR model to rank the prediction set
+        :param prediction_set:      requires first column to contain the query ids, second column the document ids
+                                    and (optionally) last column to contain the training judgments in descending order
+                                    i.e. higher scores are better
+        :return:                    returns the model
+        """
+
+        if not self._omega:
+            raise SystemError("You need to train a model first!")
+
+        # prepare data
+        query_ids, doc_ids, feature_matrix, initial_scores = prepare_data(prediction_set)
+
+        # calculate the predictions
+        predictions = np.dot(feature_matrix, self._omega)
+
+        # create the resulting data frame
+        result = pd.DataFrame({'doc_ids': doc_ids, 'score': predictions})
+
+        # sort by the score in descending order
+        result = result.sort_values(['score'], ascending=[0])
+
+        return result
 
     def loss(self, training_set, protected_feature, gamma, ):
         raise NotImplementedError()
+
+
+def prepare_data(data):
+    """
+    Extracts the different columns of the input data
+    :param data:
+    :return:
+    """
+    query_ids = np.asarray(data.iloc[:, 0])
+    doc_ids = np.asarray(data.iloc[:, 1])
+    feature_matrix = np.asarray(data.iloc[:, 2:(data.shape[1] - 1)])
+    scores = np.reshape(np.asarray(data.iloc[:, data.shape[1] - 1]),
+                                 (feature_matrix.shape[0], 1))
+
+    return query_ids, doc_ids, feature_matrix, scores
