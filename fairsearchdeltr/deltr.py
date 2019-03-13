@@ -38,9 +38,9 @@ class Deltr(object):
         """
 
         # check if mandatory parameters are present
-        if not protected_feature:
+        if protected_feature is None:
             raise ValueError("The index of column in data `protected_feature` must be initialized")
-        if not gamma:
+        if gamma is None:
             raise ValueError("The `gamma` parameter must be initialized")
 
         # assign mandatory parameters
@@ -55,6 +55,7 @@ class Deltr(object):
 
         # default init
         self._omega = None
+        self._loss = None
 
     def train(self, training_set: pd.DataFrame):
         """
@@ -70,10 +71,11 @@ class Deltr(object):
                              self._lambda, self._init_var)
 
         # prepare data
-        query_ids, doc_ids, feature_matrix, training_scores = prepare_data(training_set)
+        query_ids, doc_ids, protected_attributes, feature_matrix, training_scores = prepare_data(training_set,
+                                                                                                 self._protected_feature)
 
         # launch training routine
-        self._omega = tr.train_nn(query_ids, feature_matrix, training_scores)
+        self._omega, self._loss = tr.train_nn(query_ids, feature_matrix, training_scores)
 
         # return model
         return self._omega
@@ -87,28 +89,31 @@ class Deltr(object):
         :return:                    returns the model
         """
 
-        if not self._omega:
+        if self._omega is None:
             raise SystemError("You need to train a model first!")
 
         # prepare data
-        query_ids, doc_ids, feature_matrix, initial_scores = prepare_data(prediction_set)
+        query_ids, doc_ids, protected_attributes,feature_matrix, initial_scores = prepare_data(prediction_set,
+                                                                                               self._protected_feature)
 
         # calculate the predictions
         predictions = np.dot(feature_matrix, self._omega)
 
         # create the resulting data frame
-        result = pd.DataFrame({'doc_ids': doc_ids, 'score': predictions})
+        result = pd.DataFrame({'doc_id': doc_ids, 'gender': protected_attributes, 'score': predictions})
 
         # sort by the score in descending order
         result = result.sort_values(['score'], ascending=[0])
 
         return result
 
-    def loss(self, training_set, protected_feature, gamma, ):
-        raise NotImplementedError()
+    def loss(self):
+        if self._omega is None:
+            raise SystemError("You need to train a model first!")
+        return self._loss
 
 
-def prepare_data(data):
+def prepare_data(data, protected_column):
     """
     Extracts the different columns of the input data
     :param data:
@@ -116,8 +121,9 @@ def prepare_data(data):
     """
     query_ids = np.asarray(data.iloc[:, 0])
     doc_ids = np.asarray(data.iloc[:, 1])
+    protected_attributes = np.asarray(data.iloc[:, protected_column + 2]) # add 2 for query id and doc id
     feature_matrix = np.asarray(data.iloc[:, 2:(data.shape[1] - 1)])
     scores = np.reshape(np.asarray(data.iloc[:, data.shape[1] - 1]),
                                  (feature_matrix.shape[0], 1))
 
-    return query_ids, doc_ids, feature_matrix, scores
+    return query_ids, doc_ids, protected_attributes, feature_matrix, scores

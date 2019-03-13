@@ -52,7 +52,7 @@ class Trainer(object):
             predictedScores = np.reshape(predictedScores, (feature_matrix.shape[0], 1))
 
             # with regularization
-            cost = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
+            cost, loss = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
             J = cost + np.transpose(np.multiply(predictedScores, predictedScores)) * self._lambda
             cost_converge_J[t] = np.sum(J)
 
@@ -60,7 +60,7 @@ class Trainer(object):
             omega = omega - self._learning_rate * np.sum(np.asarray(grad), axis=0).reshape(-1)
             omega_converge[t, :] = np.transpose(omega[:])
 
-        return omega
+        return omega, loss
 
     def _calculate_cost(self, training_judgments, predictions, query_ids, prot_idx):
         """
@@ -96,12 +96,13 @@ class Trainer(object):
                                                              prot_idx) \
                                        ** 2 \
                                        + loss(which_query)
-        print("U: {}".format(self._exposure_diff(predictions, query_ids, 1, prot_idx)))
-        print("L: {}".format(loss(1)))
+
+        # print("U: {}".format(self._exposure_diff(predictions, query_ids, 1, prot_idx)))
+        # print("L: {}".format(loss(1)))
 
         results = [cost(query) for query in query_ids]
 
-        return np.asarray(results)
+        return np.asarray(results), loss(1)
 
     def _calculate_gradient(self, training_features, training_judgments, predictions, query_ids, prot_idx):
         """
