@@ -7,7 +7,6 @@ This module serves as a wrapper around the utilities we have created for DELTR
 """
 
 import numpy as np
-import datetime
 import pandas as pd
 
 from fairsearchdeltr import trainer
@@ -75,10 +74,13 @@ class Deltr(object):
                                                                                                  self._protected_feature)
 
         # launch training routine
-        self._omega, self._loss = tr.train_nn(query_ids, feature_matrix, training_scores)
+        self._omega, self._loss = self._train_nn(tr, query_ids, feature_matrix, training_scores)
 
         # return model
         return self._omega
+
+    def _train_nn(self, tr, query_ids, feature_matrix, training_scores):
+        return tr.train_nn(query_ids, feature_matrix, training_scores)
 
     def rank(self, prediction_set: pd.DataFrame):
         """
@@ -99,8 +101,11 @@ class Deltr(object):
         # calculate the predictions
         predictions = np.dot(feature_matrix, self._omega)
 
+        # column name
+        column_name = prediction_set.columns.values[2 + self._protected_feature]
+
         # create the resulting data frame
-        result = pd.DataFrame({'doc_id': doc_ids, 'gender': protected_attributes, 'score': predictions})
+        result = pd.DataFrame({'doc_id': doc_ids, column_name: protected_attributes, 'score': predictions})
 
         # sort by the score in descending order
         result = result.sort_values(['score'], ascending=[0])
@@ -117,6 +122,7 @@ def prepare_data(data, protected_column):
     """
     Extracts the different columns of the input data
     :param data:
+    :param protected_column:
     :return:
     """
     query_ids = np.asarray(data.iloc[:, 0])

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='fairsearchdeltr',
-    version='0.0.1',
+    version='0.0.2',
     description='A Python library for disparate exposure in ranking (a learning to rank approach)',
     long_description=long_description,
     license='Apache 2.0',

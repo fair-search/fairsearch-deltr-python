@@ -24,13 +24,16 @@ class Trainer(object):
         if gamma == 0:
             self._no_exposure = True
 
-    def train_nn(self, query_ids, feature_matrix, training_scores):
+        self._losses = []
+
+    def train_nn(self, query_ids, feature_matrix, training_scores, store_losses=False):
         """
         trains the Neural Network to find the optimal feature weights in listwise learning to rank
 
         :param query_ids:               list of query IDs
         :param feature_matrix:          training features
         :param training_scores:         training judgments
+        :param store_losses:            store a list of all losses
         """
         m = feature_matrix.shape[0]
         n_features = feature_matrix.shape[1]
@@ -53,6 +56,10 @@ class Trainer(object):
 
             # with regularization
             cost, loss = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
+
+            if store_losses:
+                self._losses.append(loss[0][0])
+
             J = cost + np.transpose(np.multiply(predictedScores, predictedScores)) * self._lambda
             cost_converge_J[t] = np.sum(J)
 
@@ -214,6 +221,8 @@ class Trainer(object):
 
         return u2 - u3
 
+    def losses(self):
+        return self._losses
 
 def find_items_per_group_per_query(data, query_ids, which_query, prot_idx):
     """

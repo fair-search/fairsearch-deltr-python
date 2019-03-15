@@ -148,7 +148,6 @@ class SyntheticDatasetCreator(object):
 
             self.__dataset = pd.concat([prot_data, nonprot_data])
 
-
     def __createCategoricalProtectedAttributes(self, attributeNamesAndCategories, numItems):
         """
         @param attributeNamesAndCategories:         a dictionary that contains the names of the
@@ -174,9 +173,33 @@ class SyntheticDatasetCreator(object):
 
 
 if __name__ == '__main__':
-    sdc = SyntheticDatasetCreator(20, {'gender': 2}, ['age', 'education', 'ethnicity'])
+    # sdc = SyntheticDatasetCreator(20, {'gender': 2}, ['age', 'education', 'ethnicity'])
+    #     #
+    #     # print(sdc.dataset)
+    from fairsearchdeltr import deltr
 
-    print(sdc.dataset)
+    data = pd.read_csv(r'D:\Projects\Meike-FairnessInL2R-Code\data\testdaten.csv', decimal=',')
+
+    data['doc_id'] = pd.Series(range(50))
+
+    data = data[['id', 'doc_id', 'gender', 'score', 'judgment']]
+
+    d = deltr.Deltr(0, 1, 100)
+
+    print(d.train(data))
+
+    series = pd.Series([int(random.random() / 0.5) for r in range(50)])
+
+    data2 = data.copy()
+    data2['gender'] = series
+
+    omega = [-0.1861255,   0.29714501]
+
+    data3 = d.rank(data2)
+
+    print(np.asarray(data.loc[:, 'gender']))
+    print(np.asarray(data2.loc[:,'gender']))
+    print(np.asarray(data3.loc[:, 'gender']))
 
     """
         gender       age  education  ethnicity
