@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     data = data[['id', 'doc_id', 'gender', 'score', 'judgment']]
 
-    d = deltr.Deltr(0, 1, 100)
+    d = deltr.Deltr(0 - 2, 1, 100)
 
     print(d.train(data))
 
@@ -200,6 +200,8 @@ if __name__ == '__main__':
     print(np.asarray(data.loc[:, 'gender']))
     print(np.asarray(data2.loc[:,'gender']))
     print(np.asarray(data3.loc[:, 'gender']))
+
+    print(d._log)
 
     """
         gender       age  education  ethnicity

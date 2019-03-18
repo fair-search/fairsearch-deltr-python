@@ -7,7 +7,9 @@ This module holds the detailed mechanics of DELTR trainer
 """
 
 import numpy as np
+from time import time
 
+from fairsearchdeltr.models import TrainStep
 
 class Trainer(object):
 
@@ -24,7 +26,7 @@ class Trainer(object):
         if gamma == 0:
             self._no_exposure = True
 
-        self._losses = []
+        self.log = []
 
     def train_nn(self, query_ids, feature_matrix, training_scores, store_losses=False):
         """
@@ -55,10 +57,7 @@ class Trainer(object):
             predictedScores = np.reshape(predictedScores, (feature_matrix.shape[0], 1))
 
             # with regularization
-            cost, loss = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
-
-            if store_losses:
-                self._losses.append(loss[0][0])
+            cost, loss_standard, loss_exposure = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
 
             J = cost + np.transpose(np.multiply(predictedScores, predictedScores)) * self._lambda
             cost_converge_J[t] = np.sum(J)
@@ -67,7 +66,11 @@ class Trainer(object):
             omega = omega - self._learning_rate * np.sum(np.asarray(grad), axis=0).reshape(-1)
             omega_converge[t, :] = np.transpose(omega[:])
 
-        return omega, loss
+            timestamp = int(time()*1000)
+            # add current state to log object
+            self.log.append(TrainStep(timestamp, omega, grad, loss_standard, loss_exposure, sum(cost)[0][0]))
+
+        return omega, self.log
 
     def _calculate_cost(self, training_judgments, predictions, query_ids, prot_idx):
         """
@@ -109,7 +112,14 @@ class Trainer(object):
 
         results = [cost(query) for query in query_ids]
 
-        return np.asarray(results), loss(1)
+        # calucalte losses for better debugging
+        loss_standard = sum([loss(q) for q in query_ids])[0][0]
+        loss_exposure = sum([self._exposure_diff(predictions,
+                                                 query_ids,
+                                                 q,
+                                                 prot_idx) for q in query_ids])
+
+        return np.asarray(results), loss_standard, loss_exposure
 
     def _calculate_gradient(self, training_features, training_judgments, predictions, query_ids, prot_idx):
         """
@@ -222,7 +232,7 @@ class Trainer(object):
         return u2 - u3
 
     def losses(self):
-        return self._losses
+        return self.log
 
 def find_items_per_group_per_query(data, query_ids, which_query, prot_idx):
     """

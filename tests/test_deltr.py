@@ -1,12 +1,17 @@
 import pytest
 
 import os
-from fairsearchdeltr.deltr import Deltr
 import pandas as pd
+import numpy as np
 from io import StringIO
 
+from fairsearchdeltr.deltr import Deltr
+from tests.syntethic_dataset_creator import SyntheticDatasetCreator
 
-class MockDeltr(Deltr):
+class DeltrMock(Deltr):
+    """
+    Extend the Deltr class so as to extract some debug data for validation
+    """
     def __init__(self, protected_feature: int, gamma: float, number_of_iterations=3000, learning_rate=0.001,
                  lambdaa=0.001, init_var=0.01):
         super().__init__(protected_feature, gamma, number_of_iterations, learning_rate, lambdaa, init_var)
@@ -41,12 +46,9 @@ def test_create_deltr():
 
 
 def test_train_deltr():
-    # data = pd.read_csv(StringIO("""
-    # """), decimal=',')
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'fixtures', 'test_data_1.csv'), decimal=',')
 
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'testdata.csv'), decimal=',')
-
-    d = MockDeltr(0, 1, 100)
+    d = Deltr(0, 1, 100)
 
     data['doc_id'] = pd.Series(range(50))
 
@@ -54,15 +56,57 @@ def test_train_deltr():
 
     d.train(data)
 
-    assert d.losses != []
+    assert d.log != []
 
-    if len(d.losses) > 1:
-        current = d.losses[0]
-        for loss in d.losses[1:]:
-            assert loss < current
-            current = loss
+    if len(d.log) > 1:
+        current = d.log[0].loss
+        for log in d.log[1:]:
+            assert log.loss < current
+            current = log.loss
     else:
-        assert d.losses[0]
+        assert d.log[0]
+
+
+@pytest.mark.parametrize("number_of_elements, number_of_features, gamma, number_of_iterations",(
+                        (20, 5, 1, 100),
+                        (50, 10, 0.8, 500),
+                        (1000, 3, 1, 1000),
+))
+def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamma, number_of_iterations):
+
+    # create a dataset
+    sdc = SyntheticDatasetCreator(20, {'protected_feature': 2}, list(range(number_of_features-1)))
+    data = sdc.dataset
+
+    # score the elements based on some predefined weights
+    weights = [10*w for w in range(number_of_features)]
+    data['judgement'] = data.apply(lambda row: np.dot(row, weights), axis=1)
+
+    # add query and document ids
+    data['id'] = pd.Series([1] * number_of_elements)
+    data['doc_id'] = data['doc_id'] = pd.Series(range(number_of_elements))
+
+    # arrange the field names
+    data = data[['id', 'doc_id', 'protected_feature'] + list(range(number_of_features-1)) + ['judgement']]
+
+    # sort the elements by the judgement in a descending fashion
+    data = data.sort_values(['judgement'], ascending=[0])
+
+    # train a model
+    d = Deltr(0, gamma, number_of_iterations)
+    d.train(data)
+
+    print(d._omega)
+
+    assert d.log != []
+
+    if len(d.log) > 1:
+        current = d.log[0].loss
+        for log in d.log[1:]:
+            assert log.loss <= current
+            current = log.loss
+    else:
+        assert d.log[0]
 
 
 def test_rank_deltr():

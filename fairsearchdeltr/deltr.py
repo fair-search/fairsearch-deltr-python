@@ -54,7 +54,7 @@ class Deltr(object):
 
         # default init
         self._omega = None
-        self._loss = None
+        self._log = None
 
     def train(self, training_set: pd.DataFrame):
         """
@@ -74,13 +74,10 @@ class Deltr(object):
                                                                                                  self._protected_feature)
 
         # launch training routine
-        self._omega, self._loss = self._train_nn(tr, query_ids, feature_matrix, training_scores)
+        self._omega, self._log = self._train_nn(tr, query_ids, feature_matrix, training_scores)
 
         # return model
         return self._omega
-
-    def _train_nn(self, tr, query_ids, feature_matrix, training_scores):
-        return tr.train_nn(query_ids, feature_matrix, training_scores)
 
     def rank(self, prediction_set: pd.DataFrame):
         """
@@ -116,6 +113,15 @@ class Deltr(object):
         if self._omega is None:
             raise SystemError("You need to train a model first!")
         return self._loss
+
+    @property
+    def log(self):
+        if self._omega is None:
+            raise SystemError("You need to train a model first!")
+        return self._log
+
+    def _train_nn(self, tr, query_ids, feature_matrix, training_scores):
+        return tr.train_nn(query_ids, feature_matrix, training_scores)
 
 
 def prepare_data(data, protected_column):
