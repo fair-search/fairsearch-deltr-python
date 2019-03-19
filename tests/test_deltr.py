@@ -109,5 +109,43 @@ def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamm
         assert d.log[0]
 
 
-def test_rank_deltr():
-    pass
+@pytest.mark.parametrize("number_of_elements, number_of_features, gamma, number_of_iterations",(
+                        (20, 5, 1, 100),
+                        (50, 10, 0.8, 500),
+                        (1000, 3, 1, 1000),
+))
+def test_rank_deltr(number_of_elements, number_of_features, gamma, number_of_iterations):
+
+    # create a dataset
+    sdc = SyntheticDatasetCreator(20, {'protected_feature': 2}, list(range(number_of_features - 1)))
+    data = sdc.dataset
+
+    # add query and document ids
+    data['id'] = pd.Series([1] * number_of_elements)
+    data['doc_id'] = data['doc_id'] = pd.Series(range(number_of_elements))
+
+    # arrange the field names
+    data = data[['id', 'doc_id', 'protected_feature'] + list(range(number_of_features - 1))]
+
+    # score the elements based on some predefined weights
+    weights = [10 * w for w in range(number_of_features)]
+
+    # manually set omega
+    d = Deltr(0, 1, 1)
+    d._omega = weights
+
+    ranked_set = d.rank(data)
+
+    # copy the data and rank it manually
+    ranked_set_manually = data.drop(['id', 'doc_id'], axis=1).copy()
+    ranked_set_manually['judgement'] = ranked_set_manually.apply(lambda row: np.dot(row, weights), axis=1)
+    ranked_set_manually['id'] = pd.Series([1] * number_of_elements)
+    ranked_set_manually['doc_id'] = ranked_set_manually['doc_id'] = pd.Series(range(number_of_elements))
+    ranked_set_manually = ranked_set_manually[['id', 'doc_id', 'protected_feature'] + list(range(number_of_features - 1))
+                                      + ['judgement']]
+    ranked_set_manually = ranked_set_manually.sort_values(['judgement'], ascending=[0])
+
+    # the results should be the same (or approx close)
+    assert np.allclose(ranked_set_manually['judgement'], ranked_set['judgement'])
+
+
