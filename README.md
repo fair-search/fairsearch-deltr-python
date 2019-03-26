@@ -21,4 +21,17 @@ You need to import the class from the package first:
 from fairsearchdeltr import Deltr
 ```
 
+### Train a model
+You need to train the model before it can rank documents. The 
+```python
+protected_feature = 0 # column number of the protected number
+gamma = 0 # value of the gamma parameter
+number_of_iteraions = 1000 # number of iterations the training should run
+
+# create the Deltr object
+dtr = Deltr(index_protected_feature, gamma, number_of_iteraions)
+
+
+```
+
   
