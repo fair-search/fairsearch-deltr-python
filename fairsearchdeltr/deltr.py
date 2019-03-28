@@ -15,7 +15,7 @@ from fairsearchdeltr import trainer
 class Deltr(object):
 
     def __init__(self, protected_feature: int, gamma: float, number_of_iterations=3000, learning_rate=0.001,
-                 lambdaa=0.001, init_var=0.01):
+                 lambdaa=0.001, init_var=0.01, standardize=False):
         """
          Disparate Exposure in Learning To Rank
         --------------------------------------
@@ -34,6 +34,7 @@ class Deltr(object):
         :param learning_rate            learning rate in gradient descent (optional)
         :param lambdaa                  regularization constant (optional)
         :param init_var                 range of values for initialization of weights (optional)
+        :param standardize              boolean indicating whether the data should be standardized or not (optional)
         """
 
         # check if mandatory parameters are present
@@ -51,10 +52,15 @@ class Deltr(object):
         self._learning_rate = learning_rate
         self._lambda = lambdaa
         self._init_var = init_var
+        self._standardize = standardize
 
         # default init
         self._omega = None
         self._log = None
+
+        # keep training mu/sigma numbers per feature for standardization
+        self._mus = None
+        self._sigmas = None
 
     def train(self, training_set: pd.DataFrame):
         """
@@ -72,6 +78,14 @@ class Deltr(object):
         # prepare data
         query_ids, doc_ids, protected_attributes, feature_matrix, training_scores = prepare_data(training_set,
                                                                                                  self._protected_feature)
+
+        # standardize data if allowed
+        if self._standardize:
+            self._mus = feature_matrix.mean()
+            self._sigmas = feature_matrix.std()
+            protected_feature = feature_matrix[:,self._protected_feature]
+            feature_matrix = (feature_matrix - self._mus) / self._sigmas
+            feature_matrix[:, self._protected_feature] = protected_feature
 
         # launch training routine
         self._omega, self._log = self._train_nn(tr, query_ids, feature_matrix, training_scores)
@@ -93,9 +107,15 @@ class Deltr(object):
             raise SystemError("You need to train a model first!")
 
         # prepare data
-        query_ids, doc_ids, protected_attributes,feature_matrix, initial_scores = prepare_data(prediction_set,
+        query_ids, doc_ids, protected_attributes, feature_matrix, initial_scores = prepare_data(prediction_set,
                                                                                                self._protected_feature,
                                                                                                has_judgment)
+
+        # standardize data if allowed
+        if self._standardize:
+            protected_feature = feature_matrix[:, self._protected_feature]
+            feature_matrix = (feature_matrix - self._mus) / self._sigmas
+            feature_matrix[:, self._protected_feature] = protected_feature
 
         # calculate the predictions
         predictions = np.dot(feature_matrix, self._omega)
@@ -131,11 +151,13 @@ def prepare_data(data, protected_column, has_judgment=True):
     Extracts the different columns of the input data
     :param data:
     :param protected_column:
+    :param has_judgment:
     :return:
     """
     query_ids = np.asarray(data.iloc[:, 0])
     doc_ids = np.asarray(data.iloc[:, 1])
     protected_attributes = np.asarray(data.iloc[:, protected_column + 2]) # add 2 for query id and doc id
+
     if has_judgment:
         feature_matrix = np.asarray(data.iloc[:, 2:(data.shape[1] - 1)])
         scores = np.reshape(np.asarray(data.iloc[:, data.shape[1] - 1]),

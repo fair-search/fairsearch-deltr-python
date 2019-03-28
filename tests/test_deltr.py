@@ -44,11 +44,14 @@ def test_create_deltr():
     except:
         assert True
 
+@pytest.mark.parametrize("file_name, standardize",(
+                        ('test_data_1.csv', False),
+                        ('test_data_1.csv', True),
+))
+def test_train_deltr(file_name, standardize):
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'fixtures', file_name), decimal=',')
 
-def test_train_deltr():
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'fixtures', 'test_data_1.csv'), decimal=',')
-
-    d = Deltr(0, 1, 100)
+    d = Deltr(0, 1, 2, standardize=standardize)
 
     data['doc_id'] = pd.Series(range(50))
 
@@ -67,12 +70,15 @@ def test_train_deltr():
         assert d.log[0]
 
 
-@pytest.mark.parametrize("number_of_elements, number_of_features, gamma, number_of_iterations",(
-                        (20, 5, 1, 100),
-                        (50, 10, 0.8, 500),
-                        (1000, 3, 1, 1000),
+@pytest.mark.parametrize("number_of_elements, number_of_features, gamma, number_of_iterations, standardize",(
+                        (20, 5, 1, 100, False),
+                        (50, 10, 0.8, 500, False),
+                        (1000, 3, 1, 1000, False),
+                        (20, 5, 1, 100, True),
+                        (50, 10, 0.8, 500, True),
+                        (1000, 3, 1, 1000, True),
 ))
-def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamma, number_of_iterations):
+def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamma, number_of_iterations, standardize):
 
     # create a dataset
     sdc = SyntheticDatasetCreator(20, {'protected_feature': 2}, list(range(number_of_features-1)))
@@ -93,10 +99,8 @@ def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamm
     data = data.sort_values(['judgement'], ascending=[0])
 
     # train a model
-    d = Deltr(0, gamma, number_of_iterations)
+    d = Deltr(0, gamma, number_of_iterations, standardize=standardize)
     d.train(data)
-
-    print(d._omega)
 
     assert d.log != []
 
@@ -147,5 +151,3 @@ def test_rank_deltr(number_of_elements, number_of_features, gamma, number_of_ite
 
     # the results should be the same (or approx close)
     assert np.allclose(ranked_set_manually['judgement'], ranked_set['judgement'])
-
-
