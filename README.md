@@ -24,18 +24,38 @@ from fairsearchdeltr import Deltr
 ### Train a model
 You need to train the model before it can rank documents. The 
 ```python
-protected_feature = 0 # column number of the protected number
-gamma = 0 # value of the gamma parameter
-number_of_iteraions = 1000 # number of iterations the training should run
+# load some data (this is just a sample - more is better)
+sample_data = """q_id,doc_id,gender,score,judgment
+    1,1,1,0.962650646167003,1
+    1,2,0,0.940172822166108,0.98
+    1,3,0,0.925288002880488,0.96
+    1,4,1,0.896143226020877,0.94
+    1,5,0,0.89180775633204,0.92
+    1,6,0,0.838704766545679,0.9
+    """
+
+# import other helper libraries
+import pandas as pd
+from io import StringIO
+
+data = pd.read_csv(StringIO(sample_data))
+
+# setup the DELTR object
+protected_feature = 0 # column number of the protected attribute (index after query and document id)
+gamma = 1 # value of the gamma parameter
+number_of_iteraions = 10000 # number of iterations the training should run
+standardize = True # let's apply standardization to the features
 
 # create the Deltr object
-dtr = Deltr(index_protected_feature, gamma, number_of_iteraions)
+dtr = Deltr(protected_feature, gamma, number_of_iteraions, standardize=standardize)
 
+# train the model
+dtr.train(data)
+>> array([0.02527054, 0.07692437])
+# the results will be approximately the same  
 ```
 
 ### Use the model to rank 
-
-##
 
 The library contains sufficient code documentation for each of the functions.
  
