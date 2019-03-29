@@ -9,7 +9,7 @@ This module contains the primary objects that power fairsearchdeltr.
 
 class TrainStep(object):
     """The :class:`TrainStep` object, which is a representation of the parameters in each step of the training.
-    Contains a `timestamp`, `omega`, `omega_gradient`, `loss`, `loss_standard`, `loss_exposure`
+    Contains a `timestamp`, `omega`, `omega_gradient`, `loss`, `loss_standard`, `loss_exposure`.
     TODO: is the name of the class OK?
     """
     def __init__(self, timestamp, omega, omega_gradient, loss_standard, loss_exposure, loss):
