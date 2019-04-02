@@ -65,7 +65,7 @@ Now, you can use the obtained model to rank some data.
 prediction_data_raw = """q_id,doc_id,gender,score
     1,7,0,0.9645
     1,8,0,0.9524
-    1,9,0,09285
+    1,9,0,0.9285
     1,10,0,0.8961
     1,11,1,0.8911
     1,12,1,0.8312
@@ -74,13 +74,13 @@ prediction_data = pd.read_csv(StringIO(prediction_data_raw))
 
 # use the model to rank the data  
 dtr.rank(prediction_data)
->>  doc_id  gender    judgement
-    2       9       0  1618.208555
-    4      11       1     0.072307
-    5      12       1     0.061867
-    0       7       0     0.059830
-    1       8       0     0.057721
-    3      10       0     0.047908
+>> doc_id  gender  judgement
+4      11       1   0.074849
+5      12       1   0.063770
+0       7       0   0.063486
+1       8       0   0.061248
+2       9       0   0.056828
+3      10       0   0.050836
 # the result will be a re-ranked dataframe
 ```
 The library contains sufficient code documentation for each of the functions.
