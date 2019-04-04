@@ -28,6 +28,8 @@ class Trainer(object):
 
         self.log = []
 
+        self._data_per_query = {}
+
     def train_nn(self, query_ids, feature_matrix, training_scores, store_losses=False):
         """
         trains the Neural Network to find the optimal feature weights in listwise learning to rank
@@ -41,28 +43,42 @@ class Trainer(object):
         n_features = feature_matrix.shape[1]
 
         prot_idx = np.reshape(feature_matrix[:, self._protected_feature], (m, 1))
+
+        #initialize data per query
+        for q in query_ids:
+            self._data_per_query[(q, hash(str(training_scores)))] = find_items_per_group_per_query(training_scores,
+                                                                                                query_ids, q, prot_idx)
+            self._data_per_query[(q, hash(str(feature_matrix)))] = find_items_per_group_per_query(feature_matrix,
+                                                                                             query_ids, q, prot_idx)
+
         # linear neural network parameter initialization
         omega = (np.random.rand(n_features, 1) * self._init_var).reshape(-1)
-        # omega = (0.01, 0.01)
 
         cost_converge_J = np.zeros((self._number_of_iterations, 1))
-        #         cost_converge_L = np.zeros((self._number_of_iterations, 1))
-        #         cost_converge_U = np.zeros((self._number_of_iterations, 1))
         omega_converge = np.empty((self._number_of_iterations, n_features))
 
         # training routine
         for t in range(0, self._number_of_iterations):
             # forward propagation
-            predictedScores = np.dot(feature_matrix, omega)
-            predictedScores = np.reshape(predictedScores, (feature_matrix.shape[0], 1))
+            predicted_scores = np.dot(feature_matrix, omega)
+            predicted_scores = np.reshape(predicted_scores, (feature_matrix.shape[0], 1))
+
+            # initialize data per query predicted (we must re-calculate this in each iteration
+            data_per_query_predicted = {}
+            for q in query_ids:
+                data_per_query_predicted[(q, hash(str(predicted_scores)))] = find_items_per_group_per_query(predicted_scores,
+                                                                                            query_ids, q, prot_idx)
 
             # with regularization
-            cost, loss_standard, loss_exposure = self._calculate_cost(training_scores, predictedScores, query_ids, prot_idx)
+            cost, loss_standard, loss_exposure = self._calculate_cost(training_scores, predicted_scores, query_ids,
+                                                                      prot_idx, data_per_query_predicted)
 
-            J = cost + np.transpose(np.multiply(predictedScores, predictedScores)) * self._lambda
+            J = cost + np.transpose(np.multiply(predicted_scores, predicted_scores)) * self._lambda
             cost_converge_J[t] = np.sum(J)
 
-            grad = self._calculate_gradient(feature_matrix, training_scores, predictedScores, query_ids, prot_idx)
+            grad = self._calculate_gradient(feature_matrix, training_scores, predicted_scores, query_ids,
+                                            prot_idx, data_per_query_predicted)
+
             omega = omega - self._learning_rate * np.sum(np.asarray(grad), axis=0).reshape(-1)
             omega_converge[t, :] = np.transpose(omega[:])
 
@@ -72,7 +88,7 @@ class Trainer(object):
 
         return omega, self.log
 
-    def _calculate_cost(self, training_judgments, predictions, query_ids, prot_idx):
+    def _calculate_cost(self, training_judgments, predictions, query_ids, prot_idx, data_per_query_predicted):
         """
         computes the loss in list-wise learning to rank
         it incorporates L which is the error between the training judgments and those
@@ -83,37 +99,25 @@ class Trainer(object):
         :param predictions: containing the predicted scores
         :param query_ids: list of query IDs
         :param prot_idx: list stating which item is protected or non-protected
+        :param data_per_query_predicted: stores all judgments and all predicted scores that belong to one query
         :return: a float value --> loss
         """
-        data_per_query = lambda which_query, data: find_items_per_group_per_query(data, query_ids,
-                                                                                  which_query, prot_idx)
 
-        # eq 2 from DELTR paper
-        loss = lambda which_query: \
-            -np.dot(np.transpose(topp(data_per_query(which_query,
-                                                           training_judgments)[0])),
-                    np.log(topp(data_per_query(which_query,
-                                                     predictions)[0]))) / np.log(predictions.size)
-
-        if self._no_exposure:
-            cost = lambda which_query: loss(which_query)
-        else:
-            # eq 6 from DELTR paper
-            cost = lambda which_query: self._gamma \
-                                       * self._exposure_diff(predictions,
-                                                             query_ids,
-                                                             which_query,
-                                                             prot_idx) \
-                                       ** 2 \
-                                       + loss(which_query)
+        # eq 2 from DELTR paper (this is better as a functoin
+        # loss = lambda which_query: \
+        #     -np.dot(np.transpose(topp(self._data_per_query[(which_query, training_judgments)][0])),
+        #             np.log(topp(data_per_query_predicted[(which_query, predictions)][0]))) / np.log(predictions.size) \
+        #     + (0 if self._no_exposure else
+        #            self._gamma * self._exposure_diff(predictions, query_ids, which_query, prot_idx) ** 2)
 
         # print("U: {}".format(self._exposure_diff(predictions, query_ids, 1, prot_idx)))
         # print("L: {}".format(loss(1)))
 
-        results = [cost(query) for query in query_ids]
+        results = [self._loss(query, training_judgments, predictions, query_ids, prot_idx,
+                              data_per_query_predicted) for query in query_ids]
 
         # calucalte losses for better debugging
-        loss_standard = sum([loss(q) for q in query_ids])[0][0]
+        loss_standard = sum(results)[0][0]
         loss_exposure = sum([self._exposure_diff(predictions,
                                                  query_ids,
                                                  q,
@@ -121,7 +125,20 @@ class Trainer(object):
 
         return np.asarray(results), loss_standard, loss_exposure
 
-    def _calculate_gradient(self, training_features, training_judgments, predictions, query_ids, prot_idx):
+    def _loss(self, which_query, training_judgments, predictions, query_ids, prot_idx, data_per_query_predicted):
+        """
+        Calculate loss for a given query
+        """
+        result = -np.dot(np.transpose(topp(self._data_per_query[(which_query, hash(str(training_judgments)))][0])),
+                    np.log(topp(data_per_query_predicted[(which_query, hash(str(predictions)))][0]))) / np.log(predictions.size)
+
+        if self._no_exposure:
+            result += self._gamma * self._exposure_diff(predictions, query_ids, which_query, prot_idx) ** 2
+
+        return result
+
+    def _calculate_gradient(self, training_features, training_judgments, predictions, query_ids,
+                            prot_idx, data_per_query_predicted):
         """
         calculates local gradients of current feature weights
         implementation of equation 8 and appendix A in paper DELTR
@@ -131,49 +148,71 @@ class Trainer(object):
         :param predictions: vector containing the prediction scores
         :param query_ids: list of query IDs
         :param prot_idx: list stating which item is protected or non-protected
+        :param data_per_query_predicted: stores all judgments and all predicted scores that belong to one query
         :return: float value --> optimal listwise cost
         """
         # find all training judgments and all predicted scores that belong to one query
-        data_per_query = lambda which_query, data: find_items_per_group_per_query(data, query_ids,
-                                                                                  which_query, prot_idx)
+        # data_per_query = lambda which_query, data: find_items_per_group_per_query(data, query_ids,
+        #                                                                           which_query, prot_idx)
 
         # Exposure in rankings for protected and non-protected group, right summand in eq 8
-        U_deriv = lambda which_query: 2 \
-                                      * self._exposure_diff(predictions,
-                                                            query_ids,
-                                                            which_query,
-                                                            prot_idx) \
-                                      * self._normalized_topp_prot_deriv_per_group_diff(training_features,
-                                                                                        predictions,
-                                                                                        query_ids,
-                                                                                        which_query,
-                                                                                        prot_idx)
+        # U_deriv = lambda which_query: 2 \
+        #                               * self._exposure_diff(predictions,
+        #                                                     query_ids,
+        #                                                     which_query,
+        #                                                     prot_idx) \
+        #                               * self._normalized_topp_prot_deriv_per_group_diff(training_features,
+        #                                                                                 predictions,
+        #                                                                                 query_ids,
+        #                                                                                 which_query,
+        #                                                                                 prot_idx)
         # Training error
-        l1 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
-                                                                    training_features)[0]),
-                                        topp(data_per_query(which_query,
-                                                                  training_judgments)[0]))
-        l2 = lambda which_query: 1 \
-                                 / np.sum(np.exp(data_per_query(which_query,
-                                                                predictions)[0]))
-        l3 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
-                                                                    training_features)[0]),
-                                        np.exp(data_per_query(which_query,
-                                                              predictions)[0]))
+        # l1 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
+        #                                                             training_features)[0]),
+        #                                 topp(data_per_query(which_query,
+        #                                                           training_judgments)[0]))
+        # l2 = lambda which_query: 1 \
+        #                          / np.sum(np.exp(data_per_query(which_query,
+        #                                                         predictions)[0]))
+        # l3 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
+        #                                                             training_features)[0]),
+        #                                 np.exp(data_per_query(which_query,
+        #                                                       predictions)[0]))
+        #
+        # L_deriv = lambda which_query: (-l1(which_query) + l2(which_query) * l3(which_query)) / np.log(predictions.size)
 
-        L_deriv = lambda which_query: (-l1(which_query) + l2(which_query) * l3(which_query)) / np.log(predictions.size)
-
-        if self._no_exposure:
-            # standard L2R that only considers loss
-            grad = lambda which_query: L_deriv(which_query)
-        else:
-            # eq 8 in DELTR paper
-            grad = lambda which_query: self._gamma * U_deriv(which_query) + L_deriv(which_query).reshape(-1)
+        # if self._no_exposure:
+        #     standard L2R that only considers loss
+            # grad = lambda which_query: L_deriv(which_query)
+        # else:
+        #     eq 8 in DELTR paper
+            # grad = lambda which_query: self._gamma * U_deriv(which_query) + L_deriv(which_query).reshape(-1)
 
         #         if Globals.ONLY_U:
         #             grad = lambda which_query: gamma * U_deriv(which_query)
-        results = [grad(query) for query in query_ids]
+        results = [self._grad(query, training_features, training_judgments, predictions, query_ids,
+                            prot_idx, data_per_query_predicted) for query in query_ids]
         return np.asarray(results)
+
+    def _grad(self, which_query, training_features, training_judgments, predictions, query_ids,
+                            prot_idx, data_per_query_predicted):
+        # l2
+        result = 1 / np.sum(np.exp(data_per_query_predicted[(which_query, hash(str(predictions)))][0]))
+        # l3
+        result *= np.dot(np.transpose(self._data_per_query[(which_query, hash(str(training_features)))][0]),
+                         np.exp(data_per_query_predicted[(which_query, hash(str(predictions)))][0]))
+        #l1
+        result += - np.dot(np.transpose(self._data_per_query[(which_query, hash(str(training_features)))][0]),
+                          topp(self._data_per_query[(which_query, hash(str(training_judgments)))][0]))
+        #L deriv
+        result /= np.log(predictions.size)
+
+        if self._no_exposure:
+            result += self._gamma * 2 * self._exposure_diff(predictions, query_ids, which_query, prot_idx) \
+                      * self._normalized_topp_prot_deriv_per_group_diff(training_features, predictions, query_ids,
+                                                            which_query, prot_idx)
+
+        return result
 
     def _exposure_diff(self, data, query_ids, which_query, prot_idx):
         """
