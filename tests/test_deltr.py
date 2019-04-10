@@ -151,3 +151,4 @@ def test_rank_deltr(number_of_elements, number_of_features, gamma, number_of_ite
 
     # the results should be the same (or approx close)
     assert np.allclose(ranked_set_manually['judgement'], ranked_set['judgement'])
+

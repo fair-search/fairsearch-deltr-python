@@ -11,6 +11,7 @@ from time import time
 
 from fairsearchdeltr.models import TrainStep
 
+
 class Trainer(object):
 
     def __init__(self, protected_feature, gamma, number_of_iterations, learning_rate, lambdaa, init_var):
@@ -132,7 +133,7 @@ class Trainer(object):
         result = -np.dot(np.transpose(topp(self._data_per_query[(which_query, hash(str(training_judgments)))][0])),
                     np.log(topp(data_per_query_predicted[(which_query, hash(str(predictions)))][0]))) / np.log(predictions.size)
 
-        if self._no_exposure:
+        if not self._no_exposure:
             result += self._gamma * self._exposure_diff(predictions, query_ids, which_query, prot_idx) ** 2
 
         return result
@@ -207,8 +208,8 @@ class Trainer(object):
         #L deriv
         result /= np.log(predictions.size)
 
-        if self._no_exposure:
-            result += self._gamma * 2 * self._exposure_diff(predictions, query_ids, which_query, prot_idx) \
+        if not self._no_exposure:
+            result = result.reshape(-1) + self._gamma * 2 * self._exposure_diff(predictions, query_ids, which_query, prot_idx) \
                       * self._normalized_topp_prot_deriv_per_group_diff(training_features, predictions, query_ids,
                                                             which_query, prot_idx)
 
@@ -272,6 +273,7 @@ class Trainer(object):
 
     def losses(self):
         return self.log
+
 
 def find_items_per_group_per_query(data, query_ids, which_query, prot_idx):
     """
