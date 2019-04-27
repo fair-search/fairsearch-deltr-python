@@ -84,6 +84,7 @@ dtr.rank(prediction_data)
 # the result will be a re-ranked dataframe
 ```
 The library contains sufficient code documentation for each of the functions.
+
 ### Checking the model a bit deeper
 
 You can check how the training of the model progressed using a special property called `log`.
@@ -120,7 +121,7 @@ The DELTR algorithm is described in this paper:
 * Zehlike, Meike, and Carlos Castillo. "[Reducing Disparate Exposure in Ranking:
 A Learning to Rank Approach](https://doi.org/10.1145/3132847.3132938)." arXiv preprint arXiv:1805.08716 (2018).
 
-This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearchcore-python/blob/master/LICENSE) file for more information.
+This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearchdeltr-python/blob/master/LICENSE) file for more information.
 
 ## See also
 
