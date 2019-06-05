@@ -125,7 +125,7 @@ This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) base
 
 ## See also
 
-You can also see the [DELTR plug-in for ElasticSearch](https://github.com/fair-search/fairsearchdeltr-elasticsearch-plugin)
+You can also see the [DELTR for ElasticSearch](https://github.com/fair-search/fairsearch-deltr-for-elasticsearch)
  and [DELTR Java library](https://github.com/fair-search/fairsearchdeltr-java).
 
 
