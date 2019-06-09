@@ -121,7 +121,9 @@ The DELTR algorithm is described in this paper:
 * Meike Zehlike, Gina-Theresa Diehn, Carlos Castillo. "[Reducing Disparate Exposure in Ranking:
 A Learning to Rank Approach](https://doi.org/10.1145/3132847.3132938)." preprint arXiv:1805.08716 (2018).
 
-This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearchdeltr-python/blob/master/LICENSE) file for more information.
+This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearch-deltr-python/blob/master/LICENSE) file for more information.
+
+For any questions contact [Mieke Zehlike](https://de.linkedin.com/in/meike-zehlike-366bba131)
 
 ## See also
 
