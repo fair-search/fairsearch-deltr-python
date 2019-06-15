@@ -43,7 +43,7 @@ train_data_raw = """q_id,doc_id,gender,score,judgment
 train_data = pd.read_csv(StringIO(train_data_raw))
 
 # setup the DELTR object
-protected_feature = 0 # column number of the protected attribute (index after query and document id)
+protected_feature = "gender" # column name of the protected attribute (index after query and document id)
 gamma = 1 # value of the gamma parameter
 number_of_iterations = 10000 # number of iterations the training should run
 standardize = True # let's apply standardization to the features
