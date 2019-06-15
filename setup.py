@@ -8,6 +8,7 @@ setup(
     version='1.0.2',
     description='A Python library for disparate exposure in ranking (a learning to rank approach)',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     license='Apache 2.0',
     packages=['fairsearchdeltr'],
     author='Ivan Kitanovski',
