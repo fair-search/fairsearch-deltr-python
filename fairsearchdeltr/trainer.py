@@ -60,6 +60,8 @@ class Trainer(object):
 
         # training routine
         for t in range(0, self._number_of_iterations):
+            if t % 100 == 0:
+                print('.', end='', flush=True)
             # forward propagation
             predicted_scores = np.dot(feature_matrix, omega)
             predicted_scores = np.reshape(predicted_scores, (feature_matrix.shape[0], 1))
@@ -86,6 +88,9 @@ class Trainer(object):
             timestamp = int(time()*1000)
             # add current state to log object
             self.log.append(TrainStep(timestamp, omega, grad, loss_standard, loss_exposure, np.sum(cost)))
+
+        # add a new line
+        print()
 
         return omega, self.log
 
