@@ -43,13 +43,13 @@ train_data_raw = """q_id,doc_id,gender,score,judgment
 train_data = pd.read_csv(StringIO(train_data_raw))
 
 # setup the DELTR object
-protected_feature = 0 # column number of the protected attribute (index after query and document id)
+protected_feature = "gender" # column name of the protected attribute (index after query and document id)
 gamma = 1 # value of the gamma parameter
-number_of_iteraions = 10000 # number of iterations the training should run
+number_of_iterations = 10000 # number of iterations the training should run
 standardize = True # let's apply standardization to the features
 
 # create the Deltr object
-dtr = Deltr(protected_feature, gamma, number_of_iteraions, standardize=standardize)
+dtr = Deltr(protected_feature, gamma, number_of_iterations, standardize=standardize)
 
 # train the model
 dtr.train(train_data)
@@ -118,14 +118,16 @@ python setup.py test
 
 The DELTR algorithm is described in this paper:
 
-* Zehlike, Meike, and Carlos Castillo. "[Reducing Disparate Exposure in Ranking:
-A Learning to Rank Approach](https://doi.org/10.1145/3132847.3132938)." arXiv preprint arXiv:1805.08716 (2018).
+* Meike Zehlike, Gina-Theresa Diehn, Carlos Castillo. "[Reducing Disparate Exposure in Ranking:
+A Learning to Rank Approach](https://doi.org/10.1145/3132847.3132938)." preprint arXiv:1805.08716 (2018).
 
-This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearchdeltr-python/blob/master/LICENSE) file for more information.
+This library was developed by [Ivan Kitanovski](http://ivankitanovski.com/) based on the paper. See the [license](https://github.com/fair-search/fairsearch-deltr-python/blob/master/LICENSE) file for more information.
+
+For any questions contact [Mieke Zehlike](https://de.linkedin.com/in/meike-zehlike-366bba131)
 
 ## See also
 
-You can also see the [DELTR plug-in for ElasticSearch](https://github.com/fair-search/fairsearchdeltr-elasticsearch-plugin)
+You can also see the [DELTR for ElasticSearch](https://github.com/fair-search/fairsearch-deltr-for-elasticsearch)
  and [DELTR Java library](https://github.com/fair-search/fairsearchdeltr-java).
 
 
