@@ -14,7 +14,7 @@ from fairsearchdeltr import trainer
 
 class Deltr(object):
 
-    def __init__(self, protected_feature: int, gamma: float, number_of_iterations=3000, learning_rate=0.001,
+    def __init__(self, protected_feature: str, gamma: float, number_of_iterations=3000, learning_rate=0.001,
                  lambdaa=0.001, init_var=0.01,  standardize=False):
         """
          Disparate Exposure in Learning To Rank
@@ -27,7 +27,7 @@ class Deltr(object):
         the resulting rankings and thus prevents systematic biases against a protected group in the model,
         even though such bias might be present in the training data.
 
-        :param protected_feature:       index of column in data that contains protected attribute
+        :param protected_feature:       name of the column in data that contains protected attribute
         :param gamma:                   gamma parameter for the cost calculation in the training phase
                                         (recommended to be around 1)
         :param number_of_iterations     number of iteration in gradient descent (optional)
@@ -39,12 +39,15 @@ class Deltr(object):
 
         # check if mandatory parameters are present
         if protected_feature is None:
-            raise ValueError("The index of column in data `protected_feature` must be initialized")
+            raise ValueError("The name of column in data `protected_feature` must be initialized")
         if gamma is None:
             raise ValueError("The `gamma` parameter must be initialized")
 
+        # initialize the protected_feature index to -1
+        self._protected_feature = -1
+
         # assign mandatory parameters
-        self._protected_feature = protected_feature
+        self._protected_feature_name = protected_feature
         self._gamma = gamma
 
         # assign optional parameters
@@ -70,6 +73,14 @@ class Deltr(object):
                                     i.e. higher scores are better
         :return:                    returns the model
         """
+
+        # find the protected feature index
+        names = training_set.columns.tolist()
+        if self._protected_feature_name in names:
+            # the first 2 columns should ALWAYS be query id and document id, that's why we subtract 2
+            self._protected_feature = names.index(self._protected_feature_name) - 2
+        else:
+            raise ValueError("The name of the protected feature does not appear in the `DataFrame`")
 
         # create the trainer
         tr = trainer.Trainer(self._protected_feature, self._gamma, self._number_of_iterations, self._learning_rate,

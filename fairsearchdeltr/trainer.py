@@ -85,7 +85,7 @@ class Trainer(object):
 
             timestamp = int(time()*1000)
             # add current state to log object
-            self.log.append(TrainStep(timestamp, omega, grad, loss_standard, loss_exposure, sum(cost)[0][0]))
+            self.log.append(TrainStep(timestamp, omega, grad, loss_standard, loss_exposure, np.sum(cost)))
 
         return omega, self.log
 
@@ -103,17 +103,6 @@ class Trainer(object):
         :param data_per_query_predicted: stores all judgments and all predicted scores that belong to one query
         :return: a float value --> loss
         """
-
-        # eq 2 from DELTR paper (this is better as a functoin
-        # loss = lambda which_query: \
-        #     -np.dot(np.transpose(topp(self._data_per_query[(which_query, training_judgments)][0])),
-        #             np.log(topp(data_per_query_predicted[(which_query, predictions)][0]))) / np.log(predictions.size) \
-        #     + (0 if self._no_exposure else
-        #            self._gamma * self._exposure_diff(predictions, query_ids, which_query, prot_idx) ** 2)
-
-        # print("U: {}".format(self._exposure_diff(predictions, query_ids, 1, prot_idx)))
-        # print("L: {}".format(loss(1)))
-
         results = [self._loss(query, training_judgments, predictions, query_ids, prot_idx,
                               data_per_query_predicted) for query in query_ids]
 
@@ -152,45 +141,6 @@ class Trainer(object):
         :param data_per_query_predicted: stores all judgments and all predicted scores that belong to one query
         :return: float value --> optimal listwise cost
         """
-        # find all training judgments and all predicted scores that belong to one query
-        # data_per_query = lambda which_query, data: find_items_per_group_per_query(data, query_ids,
-        #                                                                           which_query, prot_idx)
-
-        # Exposure in rankings for protected and non-protected group, right summand in eq 8
-        # U_deriv = lambda which_query: 2 \
-        #                               * self._exposure_diff(predictions,
-        #                                                     query_ids,
-        #                                                     which_query,
-        #                                                     prot_idx) \
-        #                               * self._normalized_topp_prot_deriv_per_group_diff(training_features,
-        #                                                                                 predictions,
-        #                                                                                 query_ids,
-        #                                                                                 which_query,
-        #                                                                                 prot_idx)
-        # Training error
-        # l1 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
-        #                                                             training_features)[0]),
-        #                                 topp(data_per_query(which_query,
-        #                                                           training_judgments)[0]))
-        # l2 = lambda which_query: 1 \
-        #                          / np.sum(np.exp(data_per_query(which_query,
-        #                                                         predictions)[0]))
-        # l3 = lambda which_query: np.dot(np.transpose(data_per_query(which_query,
-        #                                                             training_features)[0]),
-        #                                 np.exp(data_per_query(which_query,
-        #                                                       predictions)[0]))
-        #
-        # L_deriv = lambda which_query: (-l1(which_query) + l2(which_query) * l3(which_query)) / np.log(predictions.size)
-
-        # if self._no_exposure:
-        #     standard L2R that only considers loss
-            # grad = lambda which_query: L_deriv(which_query)
-        # else:
-        #     eq 8 in DELTR paper
-            # grad = lambda which_query: self._gamma * U_deriv(which_query) + L_deriv(which_query).reshape(-1)
-
-        #         if Globals.ONLY_U:
-        #             grad = lambda which_query: gamma * U_deriv(which_query)
         results = [self._grad(query, training_features, training_judgments, predictions, query_ids,
                             prot_idx, data_per_query_predicted) for query in query_ids]
         return np.asarray(results)

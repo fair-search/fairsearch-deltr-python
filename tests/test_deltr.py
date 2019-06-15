@@ -8,6 +8,7 @@ from io import StringIO
 from fairsearchdeltr.deltr import Deltr
 from tests.syntethic_dataset_creator import SyntheticDatasetCreator
 
+
 class DeltrMock(Deltr):
     """
     Extend the Deltr class so as to extract some debug data for validation
@@ -27,7 +28,7 @@ class DeltrMock(Deltr):
 
 
 def test_create_deltr():
-    assert Deltr(1, 1)
+    assert Deltr('1', 1)
     try:
         Deltr(None, 1)
         assert False
@@ -39,7 +40,7 @@ def test_create_deltr():
     except:
         assert True
     try:
-        Deltr(1, None)
+        Deltr('1', None)
         assert False
     except:
         assert True
@@ -51,7 +52,7 @@ def test_create_deltr():
 def test_train_deltr(file_name, standardize):
     data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'fixtures', file_name), decimal=',')
 
-    d = Deltr(0, 1, 2, standardize=standardize)
+    d = Deltr('gender', 1, 10, standardize=standardize)
 
     data['doc_id'] = pd.Series(range(50))
 
@@ -59,11 +60,15 @@ def test_train_deltr(file_name, standardize):
 
     d.train(data)
 
+    print(">>>>" + str(d._omega))
+
     assert d.log != []
 
     if len(d.log) > 1:
         current = d.log[0].loss
+        print(str(d.log[0].loss) + " " + str(d.log[0].omega))
         for log in d.log[1:]:
+            print(str(log.loss) + " " + str(log.omega))
             assert log.loss < current
             current = log.loss
     else:
@@ -99,7 +104,7 @@ def test_train_deltr_synthetic_data(number_of_elements, number_of_features, gamm
     data = data.sort_values(['judgement'], ascending=[0])
 
     # train a model
-    d = Deltr(0, gamma, number_of_iterations, standardize=standardize)
+    d = Deltr('protected_feature', gamma, number_of_iterations, standardize=standardize)
     d.train(data)
 
     assert d.log != []
@@ -135,7 +140,7 @@ def test_rank_deltr(number_of_elements, number_of_features, gamma, number_of_ite
     weights = [10 * w for w in range(number_of_features)]
 
     # manually set omega
-    d = Deltr(0, 1, 1)
+    d = Deltr('protected_feature', 1, 1)
     d._omega = weights
 
     ranked_set = d.rank(data)
